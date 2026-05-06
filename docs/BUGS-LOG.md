@@ -7,6 +7,43 @@
 
 ---
 
+## v3.3.3 (2026-05-06 · 社区 PR · 4 项 hotfix)
+
+### BUG #52 · LHB akshare 1.18+ "近一月" 字符串失效（@qdby26）
+- **症状**：所有股票 `lhb_count_30d=0` / `matched_youzi=[]` / `inst_vs_youzi` 全 0 · 龙虎榜模块永远空
+- **位置**：`lib/data_sources.py::_fetch_lhb_impl`
+- **根因**：akshare 1.18+ 改了 API · `stock_lhb_stock_detail_em(symbol, date="近一月")` 返 `None` → `TypeError` → `except: return []` 静默吞掉
+- **修法**：用 `stock_lhb_stock_detail_date_em` 拿历史日期 + 按 days 过滤 + 逐日调 YYYYMMDD 格式 + 列名归一化 `交易营业部名称 → 营业部名称`
+- **验证**：6 mock 回归测试全过
+- **未来改该区域注意事项**：
+  - akshare 任何字符串简写参数（"近 X 月" / "今年" / "全部"）都不可信 · 优先用 YYYYMMDD/YYYY-MM-DD 数值格式
+  - `except Exception: return []` 这种静默吞异常的写法是 anti-pattern · 必须至少 print warning
+
+### BUG #54 · institutional.py 缺 svg_radar import（@DragonQuix）
+- **症状**：报告里 BCG/Porter 5 forces 块缺失（_render_competitive_analysis 静默返空）
+- **位置**：`lib/report/institutional.py:393`
+- **根因**：v3.2 拆分时只 import 了 `svg_gauge / svg_progress_row` · 漏了 `svg_radar`（v3.3.2 已修过 svg_sparkline · 但忘了 svg_radar）
+- **修法**：import 块加 `svg_radar`
+- **验证**：`test_institutional_imports_svg_radar` + `test_render_competitive_analysis_does_not_raise_nameerror`
+- **未来改该区域注意事项**：
+  - **任何 lib/report/* 子模块用的 svg_* 函数必须 import** · v3.2 拆分时漏了 svg_sparkline (修过 #50) 又漏了 svg_radar · 已加回归测试守护 · 若再加 svg_xxx 也要更新 import
+  - 推荐：CI 加 `python -c "from lib.report.institutional import *; ar.assemble('TEST.SH')"` 烟雾测试
+
+### BUG #59 · Python 3.11 嵌套 f-string 反斜杠 SyntaxError（@Charlson852）
+- **症状**：Python 3.11 import `lib.report.special_cards` 直接 `SyntaxError: f-string expression part cannot include a backslash`
+- **位置**：`lib/report/special_cards.py::render_school_scores` · 第 500 行
+- **根因**：Python 3.11 不允许 f-string 表达式部分有反斜杠 · `f"{f'...\\\"...\\\"...' if skip else ''}"` 这种嵌套 f-string + 反斜杠 attr 引号会触发 SyntaxError（Python 3.12+ 才允许）
+- **影响**：所有 Python 3.11 用户（Debian 13 默认）完全无法 import · stage2 全崩
+- **修法**：把内嵌 f-string 提取为独立变量 `skip_display` · 主 f-string 只插入变量 (无反斜杠)
+- **PR #59 原版 bug 警告**：作者修这个的同时把 `items.append(...)` 从 for-loop **内**（8 缩进）错移到 for-loop **外**（4 缩进）· 会导致 7 流派只渲染最后一个 · 我们 cherry-pick 仅修复部分 · 保持原缩进
+- **验证**：`test_school_scores_uses_skip_display_variable` + `test_render_school_scores_renders_all_seven_groups`
+- **未来改该区域注意事项**：
+  - **永远不要在 f-string 表达式部分用反斜杠**（即使 Python 3.12+ 允许 · 也会让 3.11 崩）· 把 HTML 等需要引号的部分提取为独立变量
+  - 重写 render_school_scores 时 · `items.append` **必须**在 for-loop 内 · 否则只渲染最后一个流派 · `test_render_school_scores_renders_all_seven_groups` 守护这条
+  - 缩进改动看似无害但语义巨变 · review PR 时关注控制流缩进
+
+---
+
 ## v3.3.2 (2026-04-28 · GitHub issue #50 + #51 hotfix)
 
 ### BUG #50 · institutional.py 漏 import svg_sparkline · NameError 卡死 stage2

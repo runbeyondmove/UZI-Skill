@@ -1,5 +1,76 @@
 # Release Notes
 
+## v3.3.3 — 2026-05-06 (社区 PR · 4 项 hotfix · #52 / #54 / #55 / #59)
+
+> **用户反馈**："请你检查 github pulls 里面他们提交的内容 · 如果效果 ok 并且没有 bug 的话可以合并"
+
+### 4 个社区 PR 处理
+
+| PR | 作者 | 决策 | 内容 |
+|---|---|---|---|
+| **#52** lhb akshare 日期 | @qdby26 | ✅ 直接合 | akshare 1.18+ 不接受 "近一月" 字符串 · 改 YYYYMMDD 日期循环 · 6 mock 测试 |
+| **#55** agent_analysis schema docs | @DragonQuix | ✅ 直接合 | 在 SKILL.md + commands/analyze-stock.md 文档化 12 条 validator 校验规则 |
+| **#54** svg_radar import | @DragonQuix | ⚠️ Cherry-pick | svg_sparkline 已在 v3.3.2 修 · svg_radar 是新缺的 · 手动应用 |
+| **#59** Python 3.11 + svg_radar | @Charlson852 | ⚠️ 部分采纳 | Py3.11 嵌套 f-string SyntaxError 真 bug 但原版有**严重缩进错误** (items.append 移出 for-loop 会让 7 流派只渲染 1 个) · 仅 cherry-pick 修复部分 + 加回归测试守护 |
+
+### #52 · LHB akshare 1.18+ 兼容（直接合并）
+
+`stock_lhb_stock_detail_em(symbol, date="近一月")` 在 akshare 1.18+ 触发 `TypeError: 'NoneType' object is not subscriptable` · 老 `except: return []` 静默吞异常 · 所有股票 `lhb_count_30d=0` · 龙虎榜模块永远跑不出数据.
+
+修法（@qdby26）：
+1. 用 `stock_lhb_stock_detail_date_em(symbol)` 拿历史上榜日
+2. 按 `days` 过滤
+3. 逐日调 `stock_lhb_stock_detail_em(symbol, date=YYYYMMDD)` (新格式)
+4. 列名归一化 `交易营业部名称 → 营业部名称` 让下游 `split_inst_vs_youzi` / `match_seats_in_lhb` 零改动
+
+### #54 + #59 · institutional.py + special_cards.py 修复
+
+**#54 svg_radar import**：v3.2 拆分时 `_render_competitive_analysis` 用了 `svg_radar` 但漏 import · Porter radar 永远 NameError → 静默返回空 → 报告里 BCG/Porter 块缺.
+
+**#59 Python 3.11 嵌套 f-string SyntaxError**:
+```python
+# 老 buggy 代码（Python 3.11 不允许 f-string 内反斜杠）
+f'  {f"· <span style=\"color:#9ca3af\">—{skip}</span>" if skip else ""}'
+# Fixed (PR #59 提议 + 我们采纳)
+skip_display = f'· <span style="color:#9ca3af">—{skip}</span>' if skip else ''
+f'  {skip_display}'
+```
+
+**为什么不直接合 PR #59**：原版把 `items.append` 从 for-loop **内部**（8 缩进）改到 for-loop **外面**（4 缩进）· 会导致 7 流派只渲染 1 个 G 量化派 · 其他 6 个全丢. 我们手工 cherry-pick 仅 skip_display 修复 · 保持 items.append 在 for-loop 内.
+
+### 回归测试
+
+- 新增 `tests/test_v3_3_3_pr_fixes.py` (5 tests)
+  - svg_radar import 检查
+  - Porter radar 实跑不抛 NameError
+  - skip_display 变量提取检查
+  - **关键回归**：7 流派必须全渲染（守护 PR #59 缩进 bug 不会重现）
+  - skip 显示边界
+- PR #52 自带 6 mock 回归测试（`test_lhb_date_format_fix.py`）
+- **总套件 348 tests 全过**（343 + 5 新）
+- 002217 真机 e2e 出 614 KB HTML
+
+### 致谢
+
+- @qdby26 · #52 LHB 日期格式修复 + 完整测试套
+- @DragonQuix · #54 + #55 institutional/docs 修复
+- @Charlson852 · #59 Python 3.11 兼容修复（虽然原版有 bug · 但思路对）
+
+### 升级方法
+
+```bash
+# Hermes
+hermes skills update wbh604/UZI-Skill/skills/deep-analysis
+
+# Claude Code
+/plugin update stock-deep-analyzer
+
+# CLI 直用
+cd UZI-Skill && git pull
+```
+
+---
+
 ## v3.3.2 — 2026-04-28 (GitHub issue #50 + #51 hotfix)
 
 > **用户反馈**："请你检查 github 的 issue · 收集 bug 和他们反馈的修复方法 · 更新 skills"

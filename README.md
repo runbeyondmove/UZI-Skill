@@ -12,7 +12,7 @@
 [![Methods](https://img.shields.io/badge/Institutional%20Methods-17-red)]()
 [![Self-Review](https://img.shields.io/badge/Self--Review-13%20checks-blueviolet)](skills/deep-analysis/scripts/lib/self_review.py)
 
-A 股 / 港股 / 美股 · 个股深度分析引擎 · **v3.3.2 GitHub issue #50/#51 hotfix · v3.3.1 Hermes 兼容修复 · v3.2.0 assemble_report -80% · v3.0.0 pipeline 默认**
+A 股 / 港股 / 美股 · 个股深度分析引擎 · **v3.3.3 社区 PR 4 合 1（lhb 修复 / svg_radar / Py3.11） · v3.3.2 issue #50/#51 · v3.2.0 assemble_report -80%**
 
 [安装](#安装) · [用法](#用法) · [三档深度](#-三档思考深度v2103-新增) · [Hermes 🆕](INSTALL-HERMES.md) · [评审团](#-51-位评审团) · [机构方法](#-17-种机构级方法) · [自查 gate](#-机械级自查-gatev29-起) · [报告截图](#-报告长什么样) · [FAQ](#-faq) · [入群交流测试](#-测试交流群) · [Contributors](CONTRIBUTORS.md)
 
@@ -718,6 +718,7 @@ python run.py <ticker> --no-resume
 
 | 版本 | 日期 | 主要变化 |
 |---|---|---|
+| **v3.3.3** | 2026-05-06 | **社区 PR 4 合 1**（[#52](https://github.com/wbh604/UZI-Skill/pull/52) / [#54](https://github.com/wbh604/UZI-Skill/pull/54) / [#55](https://github.com/wbh604/UZI-Skill/pull/55) / [#59](https://github.com/wbh604/UZI-Skill/pull/59)） · #52 [LHB akshare 1.18+ "近一月" 失效](https://github.com/wbh604/UZI-Skill/pull/52) (@qdby26) · 改 YYYYMMDD 日期循环 + 6 mock test。#55 [agent_analysis schema docs](https://github.com/wbh604/UZI-Skill/pull/55) (@DragonQuix) · SKILL.md + analyze-stock.md 文档化 12 条 validator 校验规则。#54 (@DragonQuix) cherry-pick svg_radar import · #59 (@Charlson852) cherry-pick Python 3.11 嵌套 f-string SyntaxError 修复（**避开了 #59 原版的 items.append 缩进 bug**）· 新增 5 个回归 test 守护 · 总 348 passed |
 | **v3.3.2** | 2026-04-28 | **GitHub issue #50 + #51 hotfix**（社区驱动）· #50 [Stage 2 总是超时](https://github.com/wbh604/UZI-Skill/issues/50)：v3.2 拆分时 `lib/report/institutional.py` 漏 import `svg_sparkline` · `_render_lbo_block` 触发 NameError → stage2 崩 · 加进 import 块即修复（致谢 @chenxiang-bj 报告 + agent 诊断）。#51 [XueQiu 登录验证失败](https://github.com/wbh604/UZI-Skill/issues/51)：`/cubes/cubes_search.json` endpoint 已下线 · 改用 `/query/v1/search/cube/stock.json?q={code}` (致谢 @bilieebiliee1-design 报告 + @Kylin824 提供 fix)。3 处文件同步换 endpoint。新增 5 个回归 test · 总 337 passed |
 | **v3.3.1** | 2026-04-28 | **Hermes 兼容回归修复 (hotfix)** · 群友反馈"更新后不支持 hermes 报错"。根因：v3.0/v3.1/v3.2 重构期 main 上从未包含 hermes 兼容代码（`INSTALL-HERMES.md` / `skills/deep-analysis/run.py` / `requirements.txt` / 4 个 SKILL.md hermes metadata 全缺）· 但 README 仍叫 hermes 用户装 main · 装下来缺文件就崩。修复：从 `hermes-compat` 分支 cherry-pick 5 项核心适配到 main + `run.py` 加双 layout 探测。**hermes 用户重装一次 skill 即恢复**（`hermes skills uninstall` + install 4 个）|
 | **v3.3.0** | 2026-04-23 | **分支大整合**：唯一未合 feature（v2.10 segmental 渲染层 · 228 行 + 222 CSS）cherry-pick 到 v3.2 架构 · 新建 `lib/report/segmental.py` (555 行)。同时清理 22 个 stale 分支（refactor/* / docs/* / feature/v2.14-v2.15.3 都已 superseded）· 仅保留 main + hermes-compat · 单一开发主干. |

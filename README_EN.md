@@ -12,7 +12,7 @@
 [![Methods](https://img.shields.io/badge/Institutional%20Methods-17-red)]()
 [![Self-Review](https://img.shields.io/badge/Self--Review-13%20checks-blueviolet)](skills/deep-analysis/scripts/lib/self_review.py)
 
-**A-share / HK / US deep-analysis engine — with first-class Chinese-market coverage Western terminals don't touch. v3.3.2: GitHub issues #50 (svg_sparkline NameError) + #51 (XueQiu cubes_search.json EOL) hotfix · v3.3.1: Hermes compat regression fix · v3.2.0: assemble_report split (-80%) · v3.0.0: pipeline default. v2.x APIs 100% compatible · 337 pytest pass.**
+**A-share / HK / US deep-analysis engine — with first-class Chinese-market coverage Western terminals don't touch. v3.3.3: 4 community PRs (#52 LHB akshare 1.18+ fix · #54 svg_radar import · #55 agent_analysis schema docs · #59 Python 3.11 nested f-string fix) · v3.3.2: issues #50/#51 hotfix · v3.2.0: assemble_report split (-80%) · v3.0.0: pipeline default. 348 pytest pass.**
 
 [Install](#install) · [Usage](#usage) · [Why Western Investors Should Care](#-why-western-investors-should-care) · [Jury Panel](#-51-investor-jury) · [Methods](#-17-institutional-methods) · [Self-Review Gate 🆕](#-mechanical-self-review-gate-new-in-v29) · [Screenshots](#-what-the-report-looks-like) · [FAQ](#-faq)
 
