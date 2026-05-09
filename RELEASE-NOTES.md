@@ -1,5 +1,91 @@
 # Release Notes
 
+## v3.3.4 — 2026-05-10 (mini_racer V8 crash escape hatch · issue #61)
+
+> **用户反馈** (@dragonforai)：`python run.py SEHK.03690 --depth deep` →
+> `[FATAL:address_pool_manager.cc(67)] Check failed: !pool->IsInitialized()`
+
+### Bug #61 · mini_racer V8 isolate 双重初始化 SIGTRAP
+
+**症状**：macOS Python 3.12/3.13 下 · 跑 deep 模式（特别是 HK 港股）触发 V8 致命错误 · 整个 Python 进程被 SIGTRAP · 无法从 Python 层 `try/except` 捕获.
+
+**根因**：
+- `mini_racer` 是 V8 isolate 的 ctypes 封装
+- 已知用 mini_racer 的 akshare 函数：`stock_industry_pe_ratio_cninfo` / `stock_individual_fund_flow` / `stock_a_pe_and_pb`
+- v2.6 加了 `_MINI_RACER_LOCK` 串行化 · 但 macOS Py 3.12+ 下 V8 isolate pool 仍可能被多次初始化 (libffi cross-thread ctypes call 时序问题)
+- 进程级 SIGTRAP 不是 Python 异常 · `try/except` 抓不到
+
+### 修法 · 多重 escape hatch
+
+**Layer 1 · 显式禁用**:
+```bash
+UZI_DISABLE_MINI_RACER=1 python run.py SEHK.03690 --depth deep
+```
+3 个受影响 fetcher 直接 graceful 返 fallback · 报告其他 19 维正常生成.
+
+**Layer 2 · 自动恢复（核心）· Sentinel 文件机制**:
+1. 调 mini_racer fetcher 前 · 写 `~/.uzi-skill/_minirackercrash.sentinel`
+2. 调用成功后 · 删 sentinel
+3. **若进程被 SIGTRAP 杀掉 · sentinel 留在磁盘**
+4. 下次启动检测到 sentinel · 自动 disable mini_racer + 提示用户
+
+**Layer 3 · 强制启用（debug 用）**:
+```bash
+UZI_FORCE_MINI_RACER=1 python run.py ...   # 即使有 sentinel 也启用
+```
+
+### 用户体验
+
+第一次崩 → 看到 SIGTRAP 退出
+第二次跑 → 自动检测到 sentinel · 跳过 3 个 fetcher · 报告正常生成 + stderr 提示：
+```
+⚠️  检测到上次 mini_racer 崩溃记录 · 自动跳过 industry/capital_flow/valuation 中的 cninfo/lg 调用
+ℹ️  想重试 · `rm ~/.uzi-skill/_minirackercrash.sentinel` 或 `UZI_FORCE_MINI_RACER=1`
+```
+
+### 影响
+
+- legacy `run_real_test.run_fetcher` 和 `pipeline.collect._run` 都加了 disable 检查
+- 普通 Python 异常时 sentinel 会被清掉（区分于 V8 进程级 crash · 后者 sentinel 留下）
+- 报告里 `industry_pe_avg` / `main_flow_recent` / `pe 5 年分位` 字段会缺 · 但其他 19 维 + 21 评委 + DCF 仍完整
+
+### 回归测试
+
+新增 `tests/test_v3_3_4_minirackerguard.py` (7 tests):
+- `UZI_DISABLE_MINI_RACER=1` 跳过 fetcher
+- `UZI_FORCE_MINI_RACER=1` 覆盖 sentinel
+- Sentinel 自动 disable
+- arm/disarm lifecycle
+- 普通异常不留 sentinel（区分 V8 SIGTRAP）
+- 非 mini_racer fetcher 不受影响
+- pipeline.collect 也支持 disable env
+
+**总套件 355 tests 全过**（348 + 7 新）· 002217 e2e with `UZI_DISABLE_MINI_RACER=1`: 53s · 614 KB HTML.
+
+### 致谢
+
+- @dragonforai · #61 详细 stack trace 报告
+
+### 升级方法
+
+```bash
+hermes skills update wbh604/UZI-Skill/skills/deep-analysis
+# 或
+cd UZI-Skill && git pull
+```
+
+**碰到 mini_racer crash 的用户**：
+```bash
+# 方案 1：自动恢复（推荐 · 第一次崩之后第二次跑就自动绕过）
+python run.py SEHK.03690 --depth deep
+# 第一次会 SIGTRAP · 第二次会自动 skip 那 3 个 fetcher
+
+# 方案 2：直接显式禁用
+UZI_DISABLE_MINI_RACER=1 python run.py SEHK.03690 --depth deep
+```
+
+---
+
 ## v3.3.3 — 2026-05-06 (社区 PR · 4 项 hotfix · #52 / #54 / #55 / #59)
 
 > **用户反馈**："请你检查 github pulls 里面他们提交的内容 · 如果效果 ok 并且没有 bug 的话可以合并"

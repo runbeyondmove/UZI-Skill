@@ -7,6 +7,36 @@
 
 ---
 
+## v3.3.4 (2026-05-10 · mini_racer V8 crash escape hatch · issue #61)
+
+### BUG #61 · macOS Py 3.12/3.13 下 mini_racer V8 SIGTRAP（@dragonforai）
+- **症状**：`python run.py SEHK.03690 --depth deep` → `[FATAL:address_pool_manager.cc(67)] Check failed: !pool->IsInitialized()` · Python 进程被 SIGTRAP 杀掉
+- **位置**：`run_real_test.run_fetcher` (legacy 路径) + `lib/pipeline/collect.py::_run` (pipeline 路径)
+- **根因**：
+  - `mini_racer` 是 V8 isolate 的 ctypes 封装 · 非进程内 thread-safe
+  - v2.6 加 `_MINI_RACER_LOCK` 串行化 · 但 macOS Python 3.12+ 下 libffi cross-thread ctypes call 时序仍可能让 V8 isolate pool 被多次初始化
+  - SIGTRAP 是进程级 signal · Python `try/except` 抓不到 · 整个 process 被 kill
+- **影响**：HK 港股 + deep 模式特别容易触发（因为 deep 启用更多 fetcher · 增加 mini_racer 调用频次）· 用户无法生成报告
+- **修法**（多重 layer）：
+  1. **显式 escape hatch**：`UZI_DISABLE_MINI_RACER=1` env var · 跳过 3 个 fetcher graceful 降级
+  2. **自动恢复**（核心创新）：sentinel 文件机制
+     - 调 mini_racer fetcher 前写 `~/.uzi-skill/_minirackercrash.sentinel`
+     - 成功后删
+     - 进程崩则 sentinel 留下 · 下次启动自动 disable
+  3. **强制启用**：`UZI_FORCE_MINI_RACER=1` 覆盖 sentinel（debug 用）
+  4. legacy + pipeline 两条路径都做了同样保护
+- **验证**：UZI_DISABLE_MINI_RACER=1 e2e 跑通 · 614 KB HTML 仍生成
+- **回归测试**：`tests/test_v3_3_4_minirackerguard.py` (7 tests)
+- **未来改该区域注意事项**：
+  - 不要试图用 Python `try/except` 抓 V8 SIGTRAP · 抓不到（进程级 signal）
+  - sentinel 文件路径在 `~/.uzi-skill/_minirackercrash.sentinel` · 不要改路径
+  - 调 mini_racer fetcher 时 **必须先 arm sentinel** · 成功后 disarm · 否则 auto-recovery 失效
+  - 普通 Python 异常时也要 disarm sentinel · 否则误判 V8 crash 让用户每次都跑 fallback
+  - **加新的 mini_racer 触发函数时**（akshare 升级可能引入更多 V8 调用）· 务必加进 `_MINI_RACER_FETCHERS` 集合
+  - 长期方案：考虑用 subprocess 隔离 mini_racer call · 或换 cninfo HTTP API 不依赖 mini_racer
+
+---
+
 ## v3.3.3 (2026-05-06 · 社区 PR · 4 项 hotfix)
 
 ### BUG #52 · LHB akshare 1.18+ "近一月" 字符串失效（@qdby26）
