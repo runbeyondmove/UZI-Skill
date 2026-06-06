@@ -96,7 +96,7 @@ def prepare_target(ticker: str, *, detect_lite_fn=None) -> dict[str, Any]:
                                + ", ".join(f"{c['name']}({c['code']})" for c in r["candidates"][:3]),
                 }
                 (safe_dir / "_resolve_error.json").write_text(
-                    json.dumps(err_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+                    json.dumps(err_payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
                 )
                 print(f"\n🔴 无法确认股票: {ticker!r}")
                 print(f"   你是不是想输入：")
@@ -209,7 +209,7 @@ def _check_non_stock_security(ti) -> dict | None:
         ),
     }
     (safe_dir / "_resolve_error.json").write_text(
-        json.dumps(err_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(err_payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
     )
     print(f"\n🔴 非个股标的: {ti.full} ({label})")
     print(f"   本插件是**个股**深度分析引擎，{why}")
